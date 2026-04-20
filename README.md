@@ -62,5 +62,11 @@ Outputs
 | `outputs/results.csv`           | Accuracy & sparsity per λ |
 | `outputs/gate_distribution.png` | Gate value histogram      |
 
+## Results
+
+### Gate Distribution
+
+<img src="assets/gate_distribution.png" width="600"/>
+
 
 The model achieves ~91% sparsity with no loss in accuracy, showing that a large portion of parameters can be removed during training itself without degrading performance.
