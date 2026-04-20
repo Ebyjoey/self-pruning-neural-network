@@ -1,34 +1,66 @@
-# Self-Pruning Neural Network — CIFAR-10
+**Self-Pruning Neural Network (CIFAR-10)**
 
-Feedforward network that prunes its own weights via learnable sigmoid gates with stable sparsity–accuracy tradeoff.
+A feedforward neural network that learns to prune its own weights during training using learnable sigmoid gates and sparsity regularization.
 
-## Install
+Overview
 
+Each weight w is paired with a learnable gate:
+  g=σ(s)
+The effective weight becomes:
+
+  w′=w⋅g
+
+To encourage pruning, the training objective is: 
+  L=LCE​+λ⋅∑g
+
+This pushes many gates toward zero, effectively removing unnecessary connections.
+
+Key Ideas
+  Self-pruning: No post-processing — pruning happens during training
+  L1-style penalty on gates: Encourages sparse connectivity
+  Straight-Through Estimator (STE): Enables hard gating while keeping gradients
+  Warmup phase: Prevents early collapse of weights
+How to Run
 ```bash
 pip install -r requirements.txt
-```
-
-## Run
-
-```bash
 python train.py
 ```
+Runs experiments for:
+```bash
+λ ∈ {1e-9, 1e-8, 5e-8, 2e-7}
+```
 
-Trains four experiments (λ ∈ {1e-6, 5e-6, 1e-5, 5e-5}) for 30 epochs each.
+Results
+| Lambda | Accuracy   | Sparsity  |
+| ------ | ---------- | --------- |
+| 1e-9   | 52.25%     | 75.0%     |
+| 1e-8   | 52.11%     | 80.9%     |
+| 5e-8   | 52.27%     | 86.3%     |
+| 2e-7   | **53.10%** | **91.4%** |
 
-## Outputs
+Sparsity = % of gates < 0.5
 
-| File | Description |
-|------|-------------|
-| `outputs/results.csv` | Lambda, test accuracy, sparsity % per run |
-| `outputs/gate_distribution.png` | Gate histogram for best-accuracy model |
+Observations
+  Higher λ → significantly higher sparsity
+  Accuracy remains stable even at >90% sparsity
+  Indicates strong redundancy in the network
+  Gate values naturally separate into “active” and “pruned” groups
+  Design Choices
+  Gate parameterization: sigmoid(gate_scores)
+  Hard gating: Threshold at 0.5 with STE
+  
+Separate learning rates:
+  weights: 1e-3
+  gates: 1e-2
+  Warmup (5 epochs): train without sparsity loss
+  Gradient clipping: improves stability
+  
+Outputs
 
-## Stability design
+| File                            | Description               |
+| ------------------------------- | ------------------------- |
+| `outputs/results.csv`           | Accuracy & sparsity per λ |
+| `outputs/gate_distribution.png` | Gate value histogram      |
 
-| Mechanism | Detail |
-|-----------|--------|
-| Warmup | Epochs 1–5 CE only; sparsity loss added from epoch 6 |
-| Sparsity loss | `mean(sigmoid(gates))` — normalized, not sum |
-| Gradient clipping | `clip_grad_norm_(..., max_norm=1.0)` |
-| Gate init | `gate_scores = −1` → `sigmoid(−1) ≈ 0.27` |
-| Hard gating | Straight-through estimator at threshold 0.1 |
+
+The model achieves ~91% sparsity with no loss in accuracy, showing that a large portion of parameters can be removed during training itself without degrading performance.
